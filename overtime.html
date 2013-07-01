@@ -34,7 +34,11 @@ div:hover{
         }
     </script>
 <!--data above-->
-	<script type="text/javascript" src="d3.v3.js"></script>
+
+<!--	<script type="text/javascript" src="d3.v3.js"></script> -->
+	<script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.0.0"></script>
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.csv.js?2.0.0"></script>
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.time.js?2.0.0"></script>
 </head>
 <style>
 body.Courier {
@@ -51,14 +55,15 @@ body.Times {
 </style>
 
 <body>
-	<script src="d3.v3.js"></script>
 	<script>
+
+	var parse = d3.time.format(":%S");
 
 	var margin = {top: 20, right: 20, bottom: 30, left: 40},
 		width = 960 - margin.left - margin.right,
 		height = 500 - margin.top - margin.bottom;
 
-	var x = d3.scale.linear()
+	var x = d3.time.scale()
 		.range([0,width]);
 
 	var y = d3.scale.linear()
@@ -82,7 +87,8 @@ body.Times {
 // Read in JSON data
 	d3.json("rnd_ppt_scatter.json",function(error, data) {
 		data.forEach(function(d) {
-			d.timestamp = +d[0];
+			d.timestamp = parse(d[0]);
+//			d.timestamp = +d[0];
 			// add a participant number (arbitrary)
 			d.ppt_num = +d[1];
 		});
@@ -119,7 +125,7 @@ console.log("step 2")
 		.attr("r",3.5)
 		.attr("cx", function(d) { return x(d.timestamp); })
 		.attr("cy", function(d) { return y(d.ppt_num); })
-		.style("fill", function(d) { return color(1)})
+		.style("fill", function(d) { return color(math.floor(d.ppt_num)/10)})
 	});
 
 </script>
