@@ -35,10 +35,11 @@ div:hover{
     </script>
 <!--data above-->
 
-<!--	<script type="text/javascript" src="d3.v3.js"></script> -->
-	<script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.0.0"></script>
+<script type="text/javascript" src="d3.v3.js"></script>
+<script type="text/javascript" src="d3.time.js"></script>
+<!--	<script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.0.0"></script>
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.csv.js?2.0.0"></script>
-    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.time.js?2.0.0"></script>
+    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.time.js?2.0.0"></script> -->
 </head>
 <style>
 body.Courier {
@@ -85,12 +86,12 @@ body.Times {
 		.append("g")
 		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 // Read in JSON data
-	d3.json("rnd_ppt_scatter.json",function(error, data) {
+	d3.json("rnd_ppt_scatter.json",function(data) {
 		data.forEach(function(d) {
-			d.timestamp = parse(d[0]);
+			d.timestamp = parse(d[0])
 //			d.timestamp = +d[0];
 			// add a participant number (arbitrary)
-			d.ppt_num = +d[1];
+			d.ppt_num = +d[1]
 		});
 
 		x.domain(d3.extent(data, function(d) { return d[0]})).nice();
