@@ -9,7 +9,7 @@ for i in range(5000):
 	time = t.time();
 #	time2 = dt.datetime.now();
 	mix = random.random();
-	data.append([math.floor(time*mix),random.randint(1,100)])
+	data.append([str(math.floor(time*mix)),random.randint(1,100)])
 
 #data=sorted(data,key=int);
 out = open("rnd_ppt_scatter.json",'w')

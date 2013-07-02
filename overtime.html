@@ -36,8 +36,9 @@ div:hover{
 <!--data above-->
 
 <script type="text/javascript" src="d3.v3.js"></script>
-<script type="text/javascript" src="d3.time.js"></script>
-<!--	<script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.0.0"></script>
+<!--	<script type="text/javascript" src="d3.time3.js"></script>
+<script type="text/javascript" src="d3.time2.js"></script>
+<script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.0.0"></script>
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.csv.js?2.0.0"></script>
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.time.js?2.0.0"></script> -->
 </head>
@@ -58,7 +59,7 @@ body.Times {
 <body>
 	<script>
 
-	var parse = d3.time.format(":%S");
+	var format = d3.time.format(":%S");
 
 	var margin = {top: 20, right: 20, bottom: 30, left: 40},
 		width = 960 - margin.left - margin.right,
@@ -88,13 +89,15 @@ body.Times {
 // Read in JSON data
 	d3.json("rnd_ppt_scatter.json",function(data) {
 		data.forEach(function(d) {
-			d.timestamp = parse(d[0])
+console.log(d[0])
+			d.timestamp = +format.parse(d[0])
+//console.log("got there")
 //			d.timestamp = +d[0];
 			// add a participant number (arbitrary)
-			d.ppt_num = +d[1]
+			d.ppt_num = d[1]
 		});
 
-		x.domain(d3.extent(data, function(d) { return d[0]})).nice();
+		x.domain(d3.extent(data, function(d) { return d[0]/1000}));
 		y.domain(d3.extent(data, function(d) { return d.ppt_num})).nice();
 
 		svg.append("g")
@@ -115,7 +118,7 @@ console.log("step 1")
 			.attr("class","label")
 			.attr("transform","rotate(-90)")
 			.attr("y",6)
-			.attr("dy",",71em")
+			.attr("dy","71em")
 			.style("text-anchor","end")
 			.text("Participant Number")
 console.log("step 2")
@@ -124,9 +127,11 @@ console.log("step 2")
 		.enter().append("circle")
 		.attr("class","dot")
 		.attr("r",3.5)
-		.attr("cx", function(d) { return x(d.timestamp); })
+		.attr("cx", function(d) { return x(d[0]/100); })
 		.attr("cy", function(d) { return y(d.ppt_num); })
-		.style("fill", function(d) { return color(math.floor(d.ppt_num)/10)})
-	});
+		.style("fill", function(d) { return color(Math.ceil(d.ppt_num/10));})
+		});		
+		//.style("fill", function(d) { return color(2)})
+
 
 </script>
