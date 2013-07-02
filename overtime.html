@@ -36,11 +36,7 @@ div:hover{
 <!--data above-->
 
 <script type="text/javascript" src="d3.v3.js"></script>
-<!--	<script type="text/javascript" src="d3.time3.js"></script>
-<script type="text/javascript" src="d3.time2.js"></script>
-<script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?2.0.0"></script>
-    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.csv.js?2.0.0"></script>
-    <script type="text/javascript" src="http://mbostock.github.com/d3/d3.time.js?2.0.0"></script> -->
+
 </head>
 <style>
 body.Courier {
@@ -71,7 +67,7 @@ body.Times {
 	var y = d3.scale.linear()
 		.range([height,0]);
 
-	var color = d3.scale.category10();
+	var color = d3.scale.category20();
 
 	var xAxis = d3.svg.axis()
 		.scale(x)
@@ -91,8 +87,6 @@ body.Times {
 		data.forEach(function(d) {
 console.log(d[0])
 			d.timestamp = +format.parse(d[0])
-//console.log("got there")
-//			d.timestamp = +d[0];
 			// add a participant number (arbitrary)
 			d.ppt_num = d[1]
 		});
@@ -129,9 +123,8 @@ console.log("step 2")
 		.attr("r",3.5)
 		.attr("cx", function(d) { return x(d[0]/100); })
 		.attr("cy", function(d) { return y(d.ppt_num); })
-		.style("fill", function(d) { return color(Math.ceil(d.ppt_num/10));})
+		.style("fill", function(d) { return color(Math.ceil(d.ppt_num/5));})
 		});		
-		//.style("fill", function(d) { return color(2)})
 
 
 </script>
