@@ -1,7 +1,7 @@
+
 <!DOCTYPE html>
 <meta charset="utf-8">
 <html lang="en">
-<head>
 <style type="text/css">
 div.bar {
     display: inline-block;
@@ -24,20 +24,8 @@ div:hover{
 }
 </style>
 
-<!--data below-->
-    <script type="text/javascript">
-        var p1_dataset = [];
-        for (var d = 0; d <= 500; d += 1){
-            var newNum = Math.random();
-            var newTime = Math.floor(Date.now()*newNum);
-            p1_dataset.push(newTime);
-        }
-    </script>
-<!--data above-->
-
 <script type="text/javascript" src="d3.v3.js"></script>
 
-</head>
 <style>
 body.Courier {
 	font: 12pt;
@@ -46,10 +34,7 @@ body.Courier {
 .dot {
 	stroke: #000;
 }
-body.Times {
-	font: 12pt;
-	font-family: "Times New Roman", Times;
-}
+
 </style>
 
 <body>
@@ -67,7 +52,7 @@ body.Times {
 	var y = d3.scale.linear()
 		.range([height,0]);
 
-	var color = d3.scale.category20b();
+	var color = d3.scale.linear().range(['red','blue']);
 
 	var xAxis = d3.svg.axis()
 		.scale(x)
@@ -82,17 +67,28 @@ body.Times {
 		.attr("height", height + margin.top + margin.bottom)
 		.append("g")
 		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
 // Read in JSON data
-	d3.json("All_10_test_add.json",function(data) {
+	d3.json("all_event_sums.json",function(data) {
 		data.forEach(function(d) {
-			d.timestamp = +format.parse(d[0])
-			d.ppt_num = d[1]
-			d.events = d[2]
+			d.clicks = d[0]
+			d.scrolls = d[1]
+			d.set_cookies = d[2]
+			d.tab_bar = d[3]
+			d.searchbar = d[4]
+			d.urlbar = d[5]
+			d.timestamp = d[6]
+			d.ppt_num = d[7]
 		});
 		console.log("data loaded")
 		console.log(data)
-		x.domain(d3.extent(data, function(d) { return d[0]}));
-		y.domain(d3.extent(data, function(d) { return d.ppt_num})).nice();
+		x.domain(d3.extent(data, function(d) { return d.timestamp}));
+		// x.domain([
+		// 	d3.min(data, function(c) { return c.timestamp }),
+		// 	d3.max(data, function(c) { return c.timestamp })
+		// 	]);
+		y.domain([0,10]);
+		// y.domain(d3.extent(data, function(d) { return d.ppt_num})).nice();
 
 		svg.append("g")
 			.attr("class","x axis")
@@ -111,6 +107,7 @@ console.log("step 1")
 		.append("text")
 			.attr("class","label")
 			.attr("transform","rotate(-90)")
+			// .attr("x",20)
 			.attr("y",6)
 			.attr("dy","71em")
 			.style("text-anchor","end")
@@ -120,10 +117,12 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
-		.attr("r", function(d) { return ((d.events+1)/70)*20})
-		.attr("cx", function(d) { return x(d[0]); })
+		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
+		.attr("r", function(d) { return Math.log(d.clicks)/Math.log(2.8);})
+		.attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cy", function(d) { return y(d.ppt_num); })
-		.style("fill", function(d) { return color(((d.events+1)/70)*20);})
+		.style("fill", function(d) { return color(Math.log(d.clicks));})
+		.style("opacity",0.6)
 		});		
 
 

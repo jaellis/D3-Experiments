@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <meta charset="utf-8">
 <html lang="en">
@@ -83,21 +84,21 @@ body.Times {
 		.append("g")
 		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 // Read in JSON data
-	d3.json("All_10_test_add.json",function(data) {
+	d3.json("some_timelines.json",function(data) {
 		data.forEach(function(d) {
-			d.timestamp = +format.parse(d[0])
-			d.ppt_num = d[1]
-			d.events = d[2]
+			d.timestamp = d[0]
+			d.tab_num = d[2]
+			d.events = d[1]
 		});
 		console.log("data loaded")
 		console.log(data)
 		x.domain(d3.extent(data, function(d) { return d[0]}));
-		y.domain(d3.extent(data, function(d) { return d.ppt_num})).nice();
+		y.domain(d3.extent(data, function(d) { return d.tab_num})).nice();
 
 		svg.append("g")
 			.attr("class","x axis")
 			.attr("transform","translate(0," + height + ")")
-			.call(xAxis)
+			.call (xAxis)
 		.append("text")
 			.attr("class","label")
 			.attr("x",width)
@@ -122,7 +123,7 @@ console.log("step 2")
 		.attr("class","dot")
 		.attr("r", function(d) { return ((d.events+1)/70)*20})
 		.attr("cx", function(d) { return x(d[0]); })
-		.attr("cy", function(d) { return y(d.ppt_num); })
+		.attr("cy", function(d) { return y(d.tab_num); })
 		.style("fill", function(d) { return color(((d.events+1)/70)*20);})
 		});		
 
