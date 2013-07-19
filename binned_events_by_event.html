@@ -54,7 +54,7 @@ body.Courier {
 <body>
 	<script>
 
-	var format = d3.time.format("%X");
+	var format = d3.time.format("%S");
 
 	var margin = {top: 20, right: 20, bottom: 30, left: 100},
 		width = 960 - margin.left - margin.right,
@@ -105,6 +105,7 @@ body.Courier {
 		// 	d3.max(data, function(c) { return c.timestamp })
 		// 	]);
 		y.domain(["clicks","scrolls/wheels","cookies set","tab bar","search bar","url bar"]);
+		//y.domain([0,10]);
 		// y.domain(d3.extent(data, function(d) { return d.ppt_num})).nice();
 
 		svg.append("g")
@@ -134,8 +135,13 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Participant " + d.ppt_num; });
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.clicks/d3.max(data, function(d) { return d.clicks})*10;})
+		.attr("r", function(d) { return d.clicks/d3.max(data, function(d) { return d.clicks})*15;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
@@ -148,8 +154,14 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Participant " + d.ppt_num; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.scrolls/d3.max(data, function(d) { return d.scrolls})*10;})
+		.attr("r", function(d) { return d.scrolls/d3.max(data, function(d) { return d.scrolls})*15;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
@@ -161,8 +173,14 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Participant " + d.ppt_num; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.searchbar/d3.max(data, function(d) { return d.searchbar})*10;})
+		.attr("r", function(d) { return d.searchbar/d3.max(data, function(d) { return d.searchbar})*15;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
@@ -174,8 +192,21 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Participant " + d.ppt_num;})
+			d3.selectAll(data, function(d) { if (d.ppt_num ==d3.select(this).ppt_num) {
+				return d.
+				.style("background-color","black")
+			}})
+			console.log(this)
+			console.log(this.ppt_num)
+			// .style("opacity", function(){ setInterval(1000); return Math.random();}); 
+			// .style("background-color","black");
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.urlbar/d3.max(data, function(d) { return d.urlbar})*10;})
+		.attr("r", function(d) { return d.urlbar/d3.max(data, function(d) { return d.urlbar})*15;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
@@ -187,8 +218,14 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Participant " + d.ppt_num; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.tab_bar/d3.max(data, function(d) { return d.tab_bar})*10;})
+		.attr("r", function(d) { return d.tab_bar/d3.max(data, function(d) { return d.tab_bar})*15;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
@@ -200,8 +237,16 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Participant " + d.ppt_num; 
+			})
+			d3.selectAll(".cookiedot")
+			.attr("stroke","red");
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.set_cookies/d3.max(data, function(d) { return d.set_cookies})*10;})
+		.attr("r", function(d) { return d.set_cookies/d3.max(data, function(d) { return d.set_cookies})*15;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 

@@ -34,11 +34,26 @@ body.Courier {
 .clkdot {
 	stroke: #000;
 }
+.clkdot:hover{
+    outline-color: black;
+    outline-width: thin;
+    outline-style: solid;
+}
 .scrldot {
 	stroke: #000;
 }
+.scrldot:hover{
+    outline-color: black;
+    outline-width: thin;
+    outline-style: solid;
+}
 .srchdot {
 	stroke: #000;
+}
+.srchdot:hover{
+    outline-color: black;
+    outline-width: thin;
+    outline-style: solid;
 }
 .urldot {
 	stroke: #000;
@@ -46,12 +61,23 @@ body.Courier {
 .tabdot {
 	stroke: #000;
 }
+.tabdot:hover{
+    outline-color: black;
+    outline-width: thin;
+    outline-style: solid;
+}
 .cookiedot {
 	stroke: #000;
 }
 </style>
 
 <body>
+	<div id="option">
+		<input name="updateButton"
+			type="button"
+			value="Scale by User's activity (horizontal line)"
+			onclick="scaleData()" />
+	</div>
 	<script>
 
 	var format = d3.time.format("%X");
@@ -63,11 +89,11 @@ body.Courier {
 	var x = d3.time.scale()
 		.range([0,width]);
 
-	// var y = d3.scale.linear()
-	// 	.range([height,0]);
+	var y = d3.scale.linear()
+		.range([height,0]);
 
-	var y = d3.scale.ordinal()
-		.rangePoints([0,height],10);
+	// var y = d3.scale.ordinal()
+	// 	.rangePoints([0,height],10);
 
 	var color = d3.scale.category10();
 
@@ -84,6 +110,27 @@ body.Courier {
 		.attr("height", height + margin.top + margin.bottom)
 		.append("g")
 		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+// Function to scale data
+	function scaleData() {
+		var next_sub = Math.floor((Math.random()*10)+1); 
+		alert("Scaling data by participant")
+		d3.json("event_sums_noNulls_all.json",function(data) {
+		data.forEach(function(d) {
+			d.clicks = d[0]
+			d.scrolls = d[1]
+			d.set_cookies = d[2]
+			d.tab_bar = d[3]
+			d.searchbar = d[4]
+			d.urlbar = d[5]
+			d.timestamp = d[6]
+			d.ppt_num = d[7]
+		});
+	
+
+	})
+	}
+
 
 // Read in JSON data
 	d3.json("event_sums_noNulls_all.json",function(data) {
@@ -104,8 +151,8 @@ body.Courier {
 		// 	d3.min(data, function(c) { return c.timestamp }),
 		// 	d3.max(data, function(c) { return c.timestamp })
 		// 	]);
-		y.domain(["clicks","scrolls/wheels","cookies set","tab bar","search bar","url bar"]);
-		// y.domain(d3.extent(data, function(d) { return d.ppt_num})).nice();
+		// y.domain(["clicks","scrolls/wheels","cookies set","tab bar","search bar","url bar"]);
+		y.domain(d3.extent([0, d3.max(data, function(d) { return d.ppt_num})]));//.nice();
 
 		svg.append("g")
 			.attr("class","x axis")
@@ -134,79 +181,119 @@ console.log("step 2")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Mouse Click"; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.clicks/d3.max(data, function(d) { return d.clicks})*10;})
+		.attr("r", function(d) { return d.clicks/d3.max(data, function(c) { if (c.ppt_num==d.ppt_num) {return c.tab_bar,c.scrolls,c.urlbar,c.searchbar,c.set_cookies,c.clicks} })*5;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
-		.attr("cy", function(d) { return y("clicks"); })
+		.attr("cy", function(d) { return y(d.ppt_num); })
 		// .style("fill", function(d) { return color(Math.log(d.clicks));})
-		.style("fill", function(d) { return color(d.ppt_num);})
+		.style("fill", function(d) { return color(1);})
 		.style("opacity",0.6)
 
 		svg.selectAll(".scrldot")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Scroll/Wheel"; 
+			});
+		})
+		.on("click", function(d) {
+			d3.selectAll(".scrldot")
+			.style("stroke","black");
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.scrolls/d3.max(data, function(d) { return d.scrolls})*10;})
+		.attr("r", function(d) { return d.scrolls/d3.max(data, function(c) { if (c.ppt_num==d.ppt_num) {return c.tab_bar,c.scrolls,c.urlbar,c.searchbar,c.set_cookies,c.clicks} })*10;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
-		.attr("cy", function(d) { return y("scrolls/wheels"); })
-		.style("fill", function(d) { return color(d.ppt_num);})
+		.attr("cy", function(d) { return y(d.ppt_num); })
+		.style("fill", function(d) { return color(2);})
 		.style("opacity",0.6)
 
 		svg.selectAll(".srchdot")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Search Bar Activity"; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.searchbar/d3.max(data, function(d) { return d.searchbar})*10;})
+		.attr("r", function(d) { return d.searchbar/d3.max(data, function(c) { if (c.ppt_num==d.ppt_num) {return c.tab_bar,c.scrolls,c.urlbar,c.searchbar,c.set_cookies,c.clicks} })*10;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
-		.attr("cy", function(d) { return y("search bar"); })
-		.style("fill", function(d) { return color(d.ppt_num);})
+		.attr("cy", function(d) { return y(d.ppt_num); })
+		.style("fill", function(d) { return color(3);})
 		.style("opacity",0.6)
 
 		svg.selectAll(".urldot")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "URL Bar Activity"; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.urlbar/d3.max(data, function(d) { return d.urlbar})*10;})
+		.attr("r", function(d) { return d.urlbar/d3.max(data, function(c) { if (c.ppt_num==d.ppt_num) {return c.tab_bar,c.scrolls,c.urlbar,c.searchbar,c.set_cookies,c.clicks} })*10;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
-		.attr("cy", function(d) { return y("url bar"); })
-		.style("fill", function(d) { return color(d.ppt_num);})
+		.attr("cy", function(d) { return y(d.ppt_num); })
+		.style("fill", function(d) { return color(4);})
 		.style("opacity",0.6)
 
 		svg.selectAll(".tabdot")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Tab Bar Activity"; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.tab_bar/d3.max(data, function(d) { return d.tab_bar})*10;})
+		.attr("r", function(d) { return d.tab_bar/d3.max(data, function(c) { if (c.ppt_num==d.ppt_num) {return c.tab_bar,c.scrolls,c.urlbar,c.searchbar,c.set_cookies,c.clicks} })*10;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
-		.attr("cy", function(d) { return y("tab bar"); })
-		.style("fill", function(d) { return color(d.ppt_num);})
+		.attr("cy", function(d) { return y(d.ppt_num); })
+		.style("fill", function(d) { return color(5);})
 		.style("opacity",0.6)		
 		
 		svg.selectAll(".cookiedot")
 			.data(data)
 		.enter().append("circle")
 		.attr("class","dot")
+		.on("mouseover", function() {
+			d3.select(this)
+			.append("svg:title")
+			.text(function(d) { return "Cookies set"; 
+			});
+		})
 		// .attr("r", function(d) { return x(d.clicks)/d3.max(data, function(d) { return d.clicks; }) * 5; })
-		.attr("r", function(d) { return d.set_cookies/d3.max(data, function(d) { return d.set_cookies})*10;})
+		.attr("r", function(d) { return d.set_cookies/d3.max(data, function(c) { if (c.ppt_num==d.ppt_num) {return c.tab_bar,c.scrolls,c.urlbar,c.searchbar,c.set_cookies,c.clicks} })*10;})
 		// .attr("cx", function(d) { return Math.exp((x(d.timestamp)-899)*10); })
 		.attr("cx", function(d) { return x(d.timestamp); })
 
-		.attr("cy", function(d) { return y("cookie set"); })
-		.style("fill", function(d) { return color(d.ppt_num);})
+		.attr("cy", function(d) { return y(d.ppt_num); })
+		.style("fill", function(d) { return color(6);})
 		.style("opacity",0.6)
 		});	
 
