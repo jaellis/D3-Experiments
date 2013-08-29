@@ -12,7 +12,7 @@ except:
 	import json
 
 ### ...Engage  ####
-activthresh = 1000000
+activthresh = 180000
 tabdeact = {'ts': 0}
 lastclick = {'ts': 0}
 lasttabopen = {'ts': 0}
@@ -25,6 +25,7 @@ clickthenopen = False
 newtabbutton = False
 cmd_click = False
 cmdt = False
+windowreactivate = False
 datsum = 0
 # recents = deque([],15)
 mytabs = {}
@@ -32,6 +33,10 @@ curpid = None
 curts = None
 actionlist = ['tab-pageshow','scroll','wheel','mouseup','click','urlbar','searchbar','drag']
 allopens = {}
+prestcount=0
+alltabcount=0
+opentabs = {}
+unknowneventopen=0
 
 def opentypesums(mytabs,pid,datsum,allopens):
 	def spinout(opn,sumz):
@@ -41,12 +46,12 @@ def opentypesums(mytabs,pid,datsum,allopens):
 	opens={}
 	pidsum = 0
 	for i in mytabs:
-		if mytabs[i]['born by'] in opens:
-			opens[mytabs[i]['born by']]+=1
-			allopens[mytabs[i]['born by']]+=1
+		if mytabs[i]['born_by'] in opens:
+			opens[mytabs[i]['born_by']]+=1
+			allopens[mytabs[i]['born_by']]+=1
 		else:
-			opens[mytabs[i]['born by']]=1
-			allopens[mytabs[i]['born by']]=1
+			opens[mytabs[i]['born_by']]=1
+			allopens[mytabs[i]['born_by']]=1
 	for b in opens:
 		pidsum += opens[b]
 	print "\n <<<<  pid #",pid," ",pidsum,"tabs  >>>> \n"
@@ -66,6 +71,10 @@ def reset():
 	curts = None
 	global lastaction
 	lastaction = {'ts': 0,'type':None}
+	global opentabs
+	opentabs = {}
+	global my_windows
+	my_windows = {}
 
 def reset_tabopen_listeners():
 	global lasttabopen 
@@ -90,193 +99,230 @@ def reset_tabopen_listeners():
 	lasttabactivate = {'ts': 0}
 	global lastclick
 	lastclick = {'ts': 0}
+	global newwin
+	newwin = False
+	global tabready
+	tabready = {'ts': 0}
+	global windowreactivate
+	windowreactivate = False
+	global click_parent
+	click_parent = {'ts': 0}
+
+def store_and_reset_activity(mytabs,myname):
+	scroll_and_wheel = mytabs[myname]['actions']['scroll'] + mytabs[myname]['actions']['wheel']
+	mouseup_and_click = mytabs[myname]['actions']['mouseup'] + mytabs[myname]['actions']['click']
+	mytabs[myname]['activity_periods'][mytabs[myname]['last_start_of_active_per']] = {'clicks': mouseup_and_click,'scroll/wheel':scroll_and_wheel,'tab-pageshow': mytabs[myname]['actions']['tab-pageshow'],'url_bar': mytabs[myname]['actions']['urlbar'],'search_bar':mytabs[myname]['actions']['searchbar']} 
+	mytabs[myname]['actions'] = {'tab-pageshow': 0,'scroll':0,'wheel':0,'mouseup':0,'click':0,'urlbar':0,'searchbar':0,'click':0}
+	return mytabs
 
 def emptytab(idnum,ts,pid):
 	currtab = {}
 	currtab['name'] = idnum
-	currtab['born on'] = ts
-	currtab['window id'] = None
-	currtab['actions'] = {'tab-pageshow': 0,'scroll':0,'wheel':0,'mouseup':0,'urlbar':0,'searchbar':0,'click':0,'tabbar':0}
-	currtab['activity'] = []
+	currtab['born_on'] = ts
+	currtab['window_id'] = None
+	currtab['actions'] = {'tab-pageshow': 0,'scroll':0,'wheel':0,'mouseup':0,'click':0,'urlbar':0,'searchbar':0,'click':0}
+	currtab['activity_periods'] = {}
 	currtab['inactivity'] = []
 	currtab['mother'] = None
-	currtab['born by'] = None
+	currtab['mother_url'] = None
+	currtab['born_by'] = None
 	currtab['pid'] = pid
 	currtab['index'] = None
 	currtab['children'] = []  ## append dicts to children
-	currtab['urls through time'] = []
-	currtab['last url'] = None
+	currtab['urls_through_time'] = []
+	currtab['last_url'] = None
 	currtab['death'] = None
 	currtab['lifespan'] = None
-	currtab['last action'] = 0
+	currtab['last_action'] = 0
+	currtab['last_start_of_active_per'] = 0
 	return currtab
 
-def playthedurge(mytabs,data,alias):
+def playthedirge(mytabs,data,alias,pid):
 	for t in data['tabids']:
 		if not t in mytabs:
-			mytabs[t] = emptytab(t,data['ts'],alias)
-			mytabs[t]['born by'] = 'I am a ghost! No Birth!'
+			mytabs[t] = emptytab(t,data['ts'],pid)
+			mytabs[t]['born_by'] = 'I am a ghost! No Birth!'
 		mytabs[t]['death'] = ts
-		mytabs[alias]['lifespan'] = int(ts) - int(mytabs[t]['born on'])
+		mytabs[t]['lifespan'] = int(ts) - int(mytabs[t]['born_on'])
 	return mytabs
 
 def populatetab(mytabs,mother,daughter,data,thismethod):
-	mytabs = signbirthcert(mytabs,mother,daughter,thismethod)
-	mytabs[alias]['index'] = data.get('index',None)
-	mytabs[alias]['window id'] = data.get('windowid',None)
+	mytabs = signbirthcert(mytabs,mother,daughter,thismethod,data)
+	mytabs[daughter]['index'] = data.get('index',None)
+	mytabs[daughter]['window_id'] = data.get('windowid',None)
 	return mytabs
 
-def signbirthcert(mytabs,mother,daughter,thismethod):
+def signbirthcert(mytabs,mother,daughter,thismethod,data):
 	mytabs = checkbirth(mytabs,daughter,thismethod)
 	if mytabs[daughter]['mother'] == None:
 		mytabs[daughter]['mother'] = mother
-	if mother != None:
-		mytabs[mother]['children'].append(daughter)	
+	if mother != None and mother in mytabs:
+		mytabs[mother]['children'].append(daughter)
+		mytabs[daughter]['mother_url'] = mytabs[mother]['last_url']
+	elif mother != None and mother not in mytabs:
+		mytabs[mother] = emptytab(mother,data['ts'],mytabs[daughter]['pid'])
+		mytabs = populatetab(mytabs,None,mother,data,'created_pre-ST')
 	return mytabs
 
 def checkbirth(mytabs,daughter,thismethod):
-	if mytabs[daughter]['born by'] != None:
-		old = mytabs[daughter]['born by']
-		# mytabs[daughter]['born by'] = [mytabs[daughter]['born by'],thismethod]
-		# print "birth wackness: ",daughter," was ",old," and is now ",thismethod
-	
-	mytabs[daughter]['born by'] = thismethod
+	if mytabs[daughter]['born_by'] != None:
+		mytabs[daughter]['born_by_orig'] = mytabs[daughter]['born_by']
+	mytabs[daughter]['born_by'] = thismethod	
 	return mytabs
 
-# def propagate1(mytabs,mother,daughter):
-# 	if mytabs[daughter]['mother'] == '':
-# 		mytabs[daughter]['mother'] = mother
-# 	mytabs[mother]['children'].append({'name': daughter, 'children': mytabs[daughter]['children']})	
-# 	mytabs = propagate2(mytabs,mytabs[mother]['mother'],mytabs[mother]['name'])
-# 	return mytabs
-# 	print "propagated1"
-
-# def propagate2(mytabs,mother,daughter):
-# 	if len(mytabs[mother]['children']) == 0:
-# 		print "  ***  error in propagate2  ***  "
-# 	elif len(mytabs[mother]['children']) != 0:
-# 		for i in mytabs[mother]['children']:
-# 			if daughter == i['name']:
-# 				i['children'] = mytabs[daughter]['children']
-# 	if mytabs[mother]['mother'] != '': #and mytabs[mother]['name'] != mytabs[mother]['mother']:
-# 		mytabs = propagate2(mytabs,mytabs[mother]['mother'],mytabs[mother]['name'])
-# 	return mytabs
-# 	print "propagated2"
-
-## tabactivityovetime: If the most recent activity has occured outside of the activity window (last action + activity threshold),
+## tabactivityovetime: If the most recent activity_periods has occured outside of the activity_periods window (last action + activity_periods threshold),
 ## this marks a period of inactivity retroactively
-def tabactivityovetime(mytabs,act,alias,ts):
-	if ts > mytabs[alias]['last action'] + activthresh:
-		if mytabs[alias]['last action'] != 0:
-			mytabs[alias]['inactivity'].append(mytabs[alias]['last action'])
-		mytabs[alias]['activity'].append(ts)
-	mytabs[alias]['last action'] = ts
-
+def tabactivityovetime(mytabs,act,myname,ts):
+	if ts > mytabs[myname]['last_action'] + activthresh and mytabs[myname]['last_action'] != 0:
+		mytabs[myname]['inactivity'].append(mytabs[myname]['last_action'])
+		mytabs = store_and_reset_activity(mytabs,myname)
+		mytabs[myname]['activity_periods'][ts] = None
+		mytabs[myname]['last_start_of_active_per'] = ts
+	mytabs[myname]['last_action'] = ts
 	return mytabs
 
-def urlsthroughtime(mytabs,ts,dtmd,alias):
+def urlsthroughtime(mytabs,ts,dtmd,myname):
 	if not re.search('about:',dtmd['url']):
 		try:
 			loc = re.search(re.escape('//')+"(.+)"+re.escape('/'),dtmd['url']).group()
 		except:
 			loc = dtmd['url']
-		if mytabs[alias]['last url'] != loc:
-		# if mytabs[alias]['last url'] != dtmd['url']:
-				mytabs[alias]['urls through time'].append({'ts': ts,'url': loc })
-				mytabs[alias]['last url'] = loc
+		if mytabs[myname]['last_url'] != loc:
+			mytabs[myname]['urls_through_time'].append({'ts': ts,'url': loc })
+			mytabs[myname]['last_url'] = loc
 	return mytabs
 
 reset_tabopen_listeners()
 
 for line in sys.stdin:
+	# tabfirstseen=False
 	pid = int(line.split('\t',6)[0])
-	ts = int(line.split('\t',6)[1])	###CHANGE!
+	ts = int(line.split('\t',6)[1]) 
 	dtm = json.loads(line.split('\t')[-1])
 	dtmd = dtm['data']
 	if pid != curpid:
-		# fh = open("tabs_for_pid_"+ str(curpid) + ".json","w")
-		# fh.write(json.dumps(mytabs))
-		# fh.close()
-		# print "\n **** \n pid #" + str(curpid) + " used " + str(len(mytabs)) + " tabs"
-		# print sums of different open (birth) types
-		# allopens,datsum = opentypesums(mytabs,curpid,datsum,allopens)
-		## reset variables
-		# print '%s\t%s' % (curpid, mytabs)
+		for a in mytabs:
+			singletab = mytabs[a]
+			d = json.dumps(singletab)
+			print d
+			alltabcount+=1
 		reset()
-		curpid = pid		
+		curpid = pid        
 	## timestamp check for hadoop
 	if ts < curts:
 		raise Exception("Timestamps are not in order!")
 	else:
-		curts = ts
-		# print "\n   ---------- new PID ------------ "		
-
+		curts = ts 
 	# Add tab to mytabs dict if not already present
 	if type(dtmd) is bool:
 		continue
 	if 'tabid' in dtmd:
 		alias = dtmd['tabid']
-		if not alias in mytabs:
-			mytabs[alias] = emptytab(alias,ts,pid)
-			# print "added new tab"
-		if 'url' in dtmd:
+	if 'url' in dtmd:
+		try:
 			mytabs = urlsthroughtime(mytabs,ts,dtmd,alias)
+		except:
+			continue
+			# print "url visited before tab exists"
 	if 'action' in dtmd:
+		if dtmd.get('tabid',None) not in opentabs and 'tabid' in dtmd:
+			mytabs[dtmd['tabid']] = emptytab(dtmd['tabid'],ts,pid)
+			mytabs = populatetab(mytabs,None,dtmd['tabid'],dtmd,'created_pre-ST')
+			prestcount+=1
+		if 'tabids' in dtmd:
+			for i in dtmd['tabids']:
+				if i not in opentabs:
+					mytabs[i] = emptytab(i,ts,pid)
+					mytabs = populatetab(mytabs,None,i,dtmd,'created_pre-ST')
+					prestcount+=1
 		### Tab Birth Method listeners ####
-		if 'tab-open' == dtmd['action']:
-			lasttabopen = dtmd
-			if lasttracking['ts']!=0 and (lasttracking['ts'] - lasttabopen['ts']) < 100:
-				mytabs[alias]['born by'] = 'new window open'
-				mytabs[alias]['index'] = dtmd.get('index',None)
-				mytabs[alias]['window id'] = dtmd.get('windowid',None)
+		if 'tab-open' == dtmd['action']:# and alias != None:
+			opentabs[dtmd['tabid']]=True
+			if lasttabopen['ts'] != 0 and clickthenopen is True and (int(ts) - 500) > lasttabopen['ts'] and lasttabactivate['ts']==0 and tabdeact['ts']==0:
+				mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+				mytabs = populatetab(mytabs,click_parent['tabid'],lasttabopen['tabid'],dtmd,'cmd_click')
 				reset_tabopen_listeners()
-			elif rightclickmenu['ts']!=0 and (rightclickmenu['ts'] - lasttabopen['ts']) < 100:
-				# mytabs[alias]['born by'] = 'context-openlinkintab'
+			lasttabopen = dtmd
+			if 0 == dtmd['index']:
+				mytabs[alias] = emptytab(alias,ts,pid)
+				mytabs = populatetab(mytabs,None,alias,dtmd,'new_window_open')
+				reset_tabopen_listeners()
+			if rightclickmenu['ts']!=0:
+				mytabs[alias] = emptytab(alias,ts,pid)
 				mytabs = populatetab(mytabs,rightclickmenu['tabid'],alias,dtmd,'context-openlinkintab')
 				reset_tabopen_listeners()
-			elif newtabbutton is True:
-				# mytabs[alias]['born by'] = 'new tab button'
-				mytabs = populatetab(mytabs,xulmom,alias,dtmd,'new tab button')
+			if newtabbutton is True:
+				mytabs[alias] = emptytab(alias,ts,pid)
+				mytabs = populatetab(mytabs,xulmom,alias,dtmd,'new_tab_button')
 				reset_tabopen_listeners()
-			elif cmdt is True:
-				# mytabs[alias]['born by'] = 'command + T'
-				mytabs = populatetab(mytabs,cmdtmom,alias,dtmd,'command + T')
+			if cmdt is True:
+				mytabs[alias] = emptytab(alias,ts,pid)
+				mytabs = populatetab(mytabs,cmdtmom,alias,dtmd,'command_+_T')
 				reset_tabopen_listeners()
-			if lastclick['ts']!=0 and (lastclick['ts'] - lasttabopen['ts']) < 100:
-				clickthenopen = True
-
-		##COMMENTED FOR DEBUGGING
-		elif 'tab-pageshow' == dtmd['action']:
-			lasttbpgshw = dtmd
-			# if clickthenopen == 1:
-			# 	cmd_click = 1
-			# 	mytabs[lasttabopen['tabid']]['born by'] = 'cmd + click'
-			# 	mytabs = signbirthcert(mytabs,lasttabopen['tabid'],alias)
+			# if windowreactivate == True:
+			# 	mytabs[alias] = emptytab(alias,ts,pid)
+			# 	mytabs = mytabs = populatetab(mytabs,None,alias,dtmd,'window_reactivate')
 			# 	reset_tabopen_listeners()
-		elif clickthenopen is True and (int(ts) + 500) > lasttabopen['ts'] and lasttabactivate['ts']==0 and tabdeact['ts']==0 and lasttbpgshw['ts']!=0 and lasttabopen['ts']!=0:
-			if lasttabopen['tabid'] == alias:
-				pass
-				# print "duplicated ", alias
-			else:
-				# mytabs[lasttabopen['tabid']]['born by'] = 'cmd + click'
-				mytabs = populatetab(mytabs,lasttabopen['tabid'],alias,dtmd,'cmd + click')
-				reset_tabopen_listeners()
+			# if lasttbpgshw['ts']!=0 and lastclick['ts']!=0:
+			# 	mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+			# 	mytabs = populatetab(mytabs,lastclick.get('tabid',None),lasttabopen['tabid'],dtmd,'cmd_click')
+			# 	reset_tabopen_listeners()
+			if lastclick['ts']!=0 and (lastclick['ts'] - lasttabopen['ts']) < 200:
+				clickthenopen = True
+				click_parent = lastclick
+		if 'tab-ready' == dtmd['action'] and lasttracking['ts']!=0:
+			mytabs[alias] = emptytab(alias,ts,pid)
+			mytabs = populatetab(mytabs,None,alias,dtmd,'new_window_open')
+			reset_tabopen_listeners()
+		if (lasttabopen['ts']!= 0 and (ts > lasttabopen['ts']+1000) and clickthenopen == True and tabdeact['ts']==0) or ('tab-ready' == dtmd['action'] and clickthenopen == True):
+			mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+			mytabs = populatetab(mytabs,click_parent.get('tabid',None),lasttabopen['tabid'],dtmd,'cmd_click')
+			reset_tabopen_listeners()
+		if 'tab-pageshow' == dtmd['action']:
+			lasttbpgshw = dtmd
+		elif 'open' == dtmd['action']:
+			newwin = True
 		elif 'tracking' == dtmd['action']:
 			lasttracking = dtmd
-		elif 'context-openlinkintab' == dtmd['action'] and 'tabid' in dtmd:
+		elif 'context-openlinkintab' == dtmd['action']:
 			rightclickmenu = dtmd
 		elif 'mouseup' == dtmd['action']:
 			lastclick = dtmd
 		elif 'tab-deactivate' == dtmd['action']:
 			tabdeact = dtmd
-			mytabs[alias]['inactivity'].append(ts)
+			mytabs[dtmd['tabid']]['inactivity'].append(ts)
+			mytabs = store_and_reset_activity(mytabs,dtmd['tabid'])
+		elif 'deactivate' == dtmd['action']:
+			for i in dtmd['tabids']:
+				mytabs[i]['inactivity'].append(ts)
+				mytabs = store_and_reset_activity(mytabs,i)
+			reset_tabopen_listeners()
 		elif 'tab-activate' == dtmd['action']:
 			lasttabactivate = dtmd
-			mytabs[alias]['activity'].append(ts)
-			if abs(dtmd['ts'] - tabdeact['ts']) < 100 and clickthenopen == 1 and tabdeact['ts'] != 0:
-				# mytabs[alias]['born by'] = 'left mouse-click'
-				mytabs = populatetab(mytabs,tabdeact['tabid'],alias,dtmd,'left mouse-click')
-				reset_tabopen_listeners()
+			if lasttabopen['ts']!=0:
+				# if clickthenopen == True and ((dtmd['ts']-lasttabopen['ts']) < 200 or tabdeact['ts']!=0): #and ((tabdeact['ts']-dtmd['ts'] < 500 and tabdeact['ts'] != 0):
+				# 	mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+				# 	mytabs = populatetab(mytabs,lastclick['tabid'],lasttabopen['tabid'],dtmd,'left_mouse-click')
+				# 	reset_tabopen_listeners()
+				# if tabdeact.get('tabid',None)==lasttbpgshw.get('tabid',None) and 'tabid' in lasttbpgshw:
+				# 	mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+				# 	mytabs = populatetab(mytabs,tabdeact['tabid'],lasttabopen['tabid'],dtmd,'double-click_in_chrome')
+				# 	reset_tabopen_listeners()
+				if tabdeact['ts']!=0 and clickthenopen == True:
+					mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+					mytabs = populatetab(mytabs,tabdeact['tabid'],lasttabopen['tabid'],dtmd,'left_mouse-click')
+					reset_tabopen_listeners()
+				elif windowreactivate == True and tabdeact['ts']!=0:
+					mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+					mytabs = populatetab(mytabs,tabdeact['windowid'],lasttabopen['tabid'],dtmd,'tab_moved_btwn_windows')
+					reset_tabopen_listeners()
+				else:
+					mytabs[lasttabopen['tabid']] = emptytab(lasttabopen['tabid'],ts,pid)
+					mytabs = populatetab(mytabs,None,lasttabopen['tabid'],dtmd,'unknown_tab-open_event')
+					unknowneventopen+=1
+					reset_tabopen_listeners()
+			mytabs[alias]['activity_periods'][ts] = None
+			mytabs[alias]['last_start_of_active_per'] = ts
 		elif 'cmd_newNavigatorTab' == dtmd['action']:
 			if 'commands:xul:toolbarbutton' == dtmd['group']:
 				newtabbutton = True
@@ -284,37 +330,51 @@ for line in sys.stdin:
 					xulmom = dtmd['tabid']
 				except:
 					xulmom = None
-				# print "xul:toolbarbutton open"
 			elif 'commands:key' == dtmd['group']:
 				cmdt = True
 				try:
 					cmdtmom = dtmd['tabid']
 				except:
 					cmdtmom = None
-				# print "cmd + T open"
+		elif 'activate' == dtmd['action']:
+			windowreactivate = True
+			for i in dtmd['tabids']:
+				mytabs[i]['activity_periods'][ts] = None
+				mytabs[i]['last_start_of_active_per'] = ts
 		### Tab Death Listeners ###
 		elif 'tab-close' == dtmd['action']:
 			mytabs[alias]['death'] = ts
-			mytabs[alias]['lifespan'] = int(ts) - int(mytabs[alias]['born on'])
+			mytabs[alias]['lifespan'] = int(ts) - int(mytabs[alias]['born_on'])
+			mytabs[alias]['last_act_to_death_latency'] = int(ts) - int(mytabs[alias]['last_action'])
+			mytabs = store_and_reset_activity(mytabs,alias)
 		elif 'close' == dtmd['action']:
-			playthedurge(mytabs,dtmd,alias)
+			playthedirge(mytabs,dtmd,alias,pid)
 			for t in dtmd['tabids']:
 				mytabs[t]['death'] = ts
-				mytabs[alias]['lifespan'] = int(ts) - int(mytabs[t]['born on'])
+				mytabs[t]['lifespan'] = int(ts) - int(mytabs[t]['born_on'])
+				mytabs[t]['last_act_to_death_latency'] = int(ts) - int(mytabs[t]['last_action'])
+				mytabs = store_and_reset_activity(mytabs,t)
 		### Tab Activity listeners ###
 		act = dtmd.get('action',None)
 		if act in actionlist and 'tabid' in dtmd:
-			# if alias != dtmd['tabid']:
-				# print "     >>>  ^ IMPOSTER! ^ <<<\n",alias," (alias) is not ",dtmd['tabid']," (tab-id)"
+			if alias not in mytabs:
+				mytabs[alias] = emptytab(alias,ts,pid)
+				mytabs[alias]['born_by'] = "action_preceded_birth"
 			mytabs[alias]['actions'][dtmd['action']] += 1
 			mytabs = tabactivityovetime(mytabs,act,alias,ts)
-		# elif act in actionlist and not 'tabid' in dtmd:
-			# print " * faceless action * "
+	if 'group' in dtmd:
+		if dtmd['group'] in actionlist and 'tabid' in dtmd:
+			if alias not in mytabs:
+				mytabs[alias] = emptytab(alias,ts,pid)
+				mytabs[alias]['born_by'] = "action_preceded_birth"
+			mytabs[alias]['actions'][dtmd['group']] += 1
+			mytabs = tabactivityovetime(mytabs,dtmd['group'],alias,ts)
+for a in mytabs:
+	singletab = mytabs[a]
+	d = json.dumps(singletab)
+	print d
+	# alltabcount+=1
 
-# print "Birth Stats for snappy:"
-# allopens = opentypesums(mytabs,curpid,datsum,allopens)
-# fh = open("tabs_for_pid_"+ str(curpid) + ".json","w")
-# fh.write(json.dumps(mytabs))
-# fh.close()
-# print "pid #" + str(curpid) + " used " + str(len(mytabs)) + " tabs"
-print '%s\t%s' % (curpid, mytabs)
+# print "alltabs=",alltabcount
+# print "pre-ST tabs=",prestcount
+# print "unknown tabs with open event=",unknowneventopen
